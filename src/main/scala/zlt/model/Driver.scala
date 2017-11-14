@@ -1,5 +1,7 @@
 package zlt.model
 
+import scalax.chart.api._
+
 class Driver {
 
 }
@@ -9,7 +11,7 @@ Driver for simulation of energy use on Zanzibar based on a single
 point of importation
  */
 
-case class Depot(max_capacity: Double, replenishment_rate_monthly: Double, depletion_rate: Double, current_stock: Double)
+case class Depot(max_capacity: Double, replenishment_rate_monthly: Double, current_stock: Double)
 
 object Depot {
 
@@ -35,9 +37,25 @@ object Depot {
     else depot.copy(current_stock = 0)
   }
 
+  def depotEmpty(depot: Depot): Boolean = depot.current_stock == 0
+
 }
 
 case class User(capacity: Int, depletion_rate:  Int)
+
+//object Display {
+//
+//  def chart(energy_data: Array[Double], demand_data: Array[Double], title:String): Unit = {
+//    val inputs: List[Array[Double]] = energy_data :: demand_data :: Nil
+//    val data = for {
+//      input <- inputs
+//      series = for (x <- 1 to input.length) yield (x, input(x-1))
+//    } yield input -> series
+//
+//    val chart = XYLineChart(data, title)
+//    chart.show()
+//  }
+//}
 
 
 object Main extends App{
@@ -53,7 +71,7 @@ object Main extends App{
   val u4: User = User(1000, 500)
   val u5: User = User(1000, 500)
 
-  val d1: Depot = Depot(15000, 5000, 0, 10000)
+  val d1: Depot = Depot(15000, 5000,10000)
 
   //list to hold all users
   val users: List[User] = List()
@@ -62,7 +80,7 @@ object Main extends App{
     List()
   }
 
-  def depotEmpty(depot: Depot): Boolean = depot.current_stock == 0
+
 
   /*
   Test against constraint. If constraint not met report otherwise
@@ -75,12 +93,22 @@ object Main extends App{
 
     var incrementer = 0 //time period
     var scenario_depot = depot
+
+    //Storage to hold intermediate results
+    //used for charting and reporting
+    var demand_data: List[Double] = List()
+    var storage_data: List[Double] = List()
+
     while (scenario_depot.current_stock > 0){
       print("testing")
       scenario_depot = Depot.replenish(scenario_depot)
       scenario_depot = Depot.distribute(scenario_depot, final_demand_annual/12)
       final_demand_annual = final_demand_annual*growth_rate_monthly
+
       incrementer += 1
+
+      storage_data = scenario_depot.current_stock :: storage_data
+      demand_data = final_demand_annual/12 :: demand_data
 
       //report interim results
       println(s"Year: ${incrementer/12}, month: ${incrementer%12 + 1} \n" +
@@ -92,6 +120,7 @@ object Main extends App{
     }
 
     println(s"Constraint was exceeded after $incrementer iterations")
+    Display.supplyDemandChart(storage_data, demand_data)
 
   }
 
