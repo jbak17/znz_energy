@@ -43,78 +43,76 @@ object Depot {
 
 case class User(capacity: Int, depletion_rate:  Int)
 
-//object Display {
-//
-//  def chart(energy_data: Array[Double], demand_data: Array[Double], title:String): Unit = {
-//    val inputs: List[Array[Double]] = energy_data :: demand_data :: Nil
-//    val data = for {
-//      input <- inputs
-//      series = for (x <- 1 to input.length) yield (x, input(x-1))
-//    } yield input -> series
-//
-//    val chart = XYLineChart(data, title)
-//    chart.show()
-//  }
-//}
+object User{
 
+  def addUser(capacity: Int, depletion_rate: Int): List[User] = ???
+
+}
+
+case class Scenario(annualDemand: Double, annualGrowth: Double, title: String = ""){
+  val growth_rate_monthly: Double = 1 + (annualGrowth / 12)
+}
+
+object Scenario {
+  def grow(scenario: Scenario): Scenario = {
+    val newDemand = scenario.annualDemand * scenario.growth_rate_monthly
+    scenario.copy(annualDemand = newDemand)
+  }
+}
 
 object Main extends App{
 
   var final_demand_annual: Double = 10000
   var growth_rate_pa = 0.07
-  var growth_rate_monthly = 1 + (growth_rate_pa/12) //1 to make sure we're growing
 
-  //temp users
-  val u1: User = User(1000, 500)
-  val u2: User = User(1000, 500)
-  val u3: User = User(1000, 500)
-  val u4: User = User(1000, 500)
-  val u5: User = User(1000, 500)
+  /*******************
+  TEST OBJECTS
+  ********************/
 
-  val d1: Depot = Depot(15000, 5000,10000)
+  val d1: Depot = Depot(15000, 5000,10000) //high fuel start
+  val d2: Depot = Depot(15000, 5000,5000) //low fuel start
+  val d3: Depot = Depot(15000, 2000,5000) //low fuel start, low replenishment rate
+  val s1: Scenario = Scenario(final_demand_annual, growth_rate_pa)
 
-  //list to hold all users
-  val users: List[User] = List()
-
-  def addUser(capacity: Int, depletion_rate: Int): List[User] = {
-    List()
-  }
-
-
-
-  /*
-  Test against constraint. If constraint not met report otherwise
-  replenish the depot,
-  deploy the fuel,
-  update demand,
-  iterate...
-   */
-  def driver(depot: Depot): Unit = {
+  /*****************
+    *
+    * @param assumptions - demand and other necessary assumptions to test
+    * @param depot - import facility conditions for assessment
+    */
+  def driver(assumptions: Scenario, depot: Depot): Unit = {
 
     var incrementer = 0 //time period
     var scenario_depot = depot
+    var scenario = assumptions
 
     //Storage to hold intermediate results
     //used for charting and reporting
     var demand_data: List[Double] = List()
     var storage_data: List[Double] = List()
 
+    /*
+    Test against constraint. If constraint not met report otherwise
+    replenish the depot,
+    deploy the fuel,
+    update demand,
+    iterate...
+     */
     while (scenario_depot.current_stock > 0){
       print("testing")
-      scenario_depot = Depot.replenish(scenario_depot)
-      scenario_depot = Depot.distribute(scenario_depot, final_demand_annual/12)
-      final_demand_annual = final_demand_annual*growth_rate_monthly
+      scenario_depot = Depot.replenish(scenario_depot) //restock
+      scenario_depot = Depot.distribute(scenario_depot, scenario.annualDemand/12) //use fuel
+      scenario = Scenario.grow(scenario)
 
       incrementer += 1
 
       storage_data = scenario_depot.current_stock :: storage_data
-      demand_data = final_demand_annual/12 :: demand_data
+      demand_data = scenario.annualDemand/12 :: demand_data
 
       //report interim results
       println(s"Year: ${incrementer/12}, month: ${incrementer%12 + 1} \n" +
         s"Depot stock: ${scenario_depot.current_stock}\n" +
-        s"Final demand: $final_demand_annual\n" +
-        s"Monthly demand: ${final_demand_annual/12}\n" +
+        s"Final demand: ${scenario.annualDemand}\n" +
+        s"Monthly demand: ${scenario.annualDemand/12}\n" +
         s"Replenishment rate: ${scenario_depot.replenishment_rate_monthly}\n")
 
     }
@@ -126,6 +124,6 @@ object Main extends App{
 
   print("hello")
 
-  driver(d1)
+  driver(s1,d3)
 
 }
